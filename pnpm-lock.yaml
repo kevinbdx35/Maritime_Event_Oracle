@@ -42,6 +42,7 @@ importers:
       pg: ^8.11.3
       tsx: ^4.7.0
       typescript: ^5.3.3
+      vitest: ^1.2.0
       zod: ^3.22.4
     dependencies:
       '@maritime/core': link:../../packages/core
@@ -53,6 +54,7 @@ importers:
       '@types/pg': 8.20.0
       tsx: 4.22.4
       typescript: 5.9.3
+      vitest: 1.6.1_@types+node@20.19.42
 
   apps/ingestor:
     specifiers:
@@ -65,6 +67,7 @@ importers:
       pg: ^8.11.3
       tsx: ^4.7.0
       typescript: ^5.3.3
+      vitest: ^1.2.0
       ws: ^8.16.0
       zod: ^3.22.4
     dependencies:
@@ -80,6 +83,7 @@ importers:
       '@types/ws': 8.18.1
       tsx: 4.22.4
       typescript: 5.9.3
+      vitest: 1.6.1_@types+node@20.19.42
 
   packages/core:
     specifiers:

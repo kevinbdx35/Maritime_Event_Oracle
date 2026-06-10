@@ -197,7 +197,38 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
   #feed-panel { background: var(--bg2); border-left: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; }
   #feed-hdr   { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; flex-shrink: 0; }
   #evt-count  { color: var(--teal); font-weight: 700; }
+
+  /* Search + filter toolbar */
+  #feed-toolbar { padding: 8px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+  #search-wrap { position: relative; }
+  #search-input {
+    width: 100%; background: var(--bg3); border: 1px solid var(--border); border-radius: 4px;
+    color: var(--text); font-family: var(--mono); font-size: 12px;
+    padding: 6px 28px 6px 10px; outline: none;
+  }
+  #search-input:focus { border-color: var(--teal); }
+  #search-input::placeholder { color: var(--muted); }
+  #search-clear {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px;
+    display: none;
+  }
+  #type-pills { display: flex; gap: 4px; flex-wrap: wrap; }
+  .pill {
+    font-size: 10px; padding: 2px 8px; border-radius: 10px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg3); color: var(--muted);
+    font-family: var(--mono); transition: all .15s;
+  }
+  .pill:hover { border-color: var(--text); color: var(--text); }
+  .pill.active { background: var(--bg); color: var(--text); border-color: var(--text); font-weight: 700; }
+  .pill[data-type="PORT_ARRIVAL"].active    { border-color: var(--teal);   color: var(--teal); }
+  .pill[data-type="PORT_DEPARTURE"].active  { border-color: var(--orange); color: var(--orange); }
+  .pill[data-type="ANCHORAGE"].active       { border-color: var(--blue);   color: var(--blue); }
+  .pill[data-type="AIS_GAP"].active         { border-color: var(--red);    color: var(--red); }
+
   #feed-list  { overflow-y: auto; flex: 1; padding: 8px; }
+  .card.hidden { display: none; }
+  #no-results { display: none; text-align: center; color: var(--muted); font-size: 12px; padding: 24px 0; }
 
   .card {
     background: var(--bg3); border: 1px solid var(--border); border-radius: 6px;
@@ -327,7 +358,22 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
 
   <div id="feed-panel">
     <div id="feed-hdr"><span>Live Events</span><span id="evt-count">0</span></div>
-    <div id="feed-list"></div>
+    <div id="feed-toolbar">
+      <div id="search-wrap">
+        <input id="search-input" type="text" placeholder="Search vessel name or MMSI…" autocomplete="off"/>
+        <button id="search-clear" title="Clear">✕</button>
+      </div>
+      <div id="type-pills">
+        <span class="pill active" data-type="ALL">All</span>
+        <span class="pill" data-type="PORT_ARRIVAL">↓ Arrival</span>
+        <span class="pill" data-type="PORT_DEPARTURE">↑ Departure</span>
+        <span class="pill" data-type="ANCHORAGE">⚓ Anchorage</span>
+        <span class="pill" data-type="AIS_GAP">⚠ Gap</span>
+      </div>
+    </div>
+    <div id="feed-list">
+      <div id="no-results">No events match the current filter.</div>
+    </div>
   </div>
 </div>
 
@@ -491,8 +537,8 @@ function updateVessels(list) {
       });
       markers[v.mmsi] = m;
     }
-    // Keep mmsi on marker for click handler closure update
     markers[v.mmsi]._mmsi = v.mmsi;
+    markers[v.mmsi]._name = (v.name || '').toLowerCase();
   }
   for (const m of Object.keys(markers)) {
     if (!seen.has(m)) { markers[m].remove(); delete markers[m]; }
@@ -517,6 +563,74 @@ async function poll() {
 }
 poll(); setInterval(poll, 10000);
 
+// ── Search + filter ───────────────────────────────────────────────────────────
+let activeType   = 'ALL';
+let searchText   = '';
+
+const searchInput = document.getElementById('search-input');
+const searchClear = document.getElementById('search-clear');
+const noResults   = document.getElementById('no-results');
+
+function typeMatchesPill(cardType, pillType) {
+  if (pillType === 'ALL') return true;
+  if (pillType === 'ANCHORAGE') return cardType === 'ANCHORAGE_START' || cardType === 'ANCHORAGE_END';
+  return cardType === pillType;
+}
+
+function cardMatches(card) {
+  const type  = card.dataset.type  || '';
+  const name  = (card.dataset.name  || '').toLowerCase();
+  const mmsi  = card.dataset.mmsi  || '';
+  if (!typeMatchesPill(type, activeType)) return false;
+  if (searchText && !name.includes(searchText) && !mmsi.includes(searchText)) return false;
+  return true;
+}
+
+function applyFilters() {
+  const cards = feedList.querySelectorAll('.card');
+  let visible = 0;
+  cards.forEach(c => {
+    const show = cardMatches(c);
+    c.classList.toggle('hidden', !show);
+    if (show) visible++;
+  });
+  noResults.style.display = (visible === 0 && cards.length > 0) ? 'block' : 'none';
+
+  // Dim map markers that don't match search
+  if (searchText) {
+    for (const [mmsi, marker] of Object.entries(markers)) {
+      const vname = (marker._name || '').toLowerCase();
+      const match = vname.includes(searchText) || mmsi.includes(searchText);
+      marker.setOpacity(match ? 1 : 0.2);
+    }
+  } else {
+    for (const marker of Object.values(markers)) marker.setOpacity(1);
+  }
+}
+
+// Type pills
+document.getElementById('type-pills').addEventListener('click', e => {
+  const pill = e.target.closest('.pill');
+  if (!pill) return;
+  document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+  pill.classList.add('active');
+  activeType = pill.dataset.type;
+  applyFilters();
+});
+
+// Search input
+searchInput.addEventListener('input', () => {
+  searchText = searchInput.value.trim().toLowerCase();
+  searchClear.style.display = searchText ? 'block' : 'none';
+  applyFilters();
+});
+searchClear.addEventListener('click', () => {
+  searchInput.value = '';
+  searchText = '';
+  searchClear.style.display = 'none';
+  applyFilters();
+});
+
 // ── SSE Feed ─────────────────────────────────────────────────────────────────
 let total = 0;
 const feedList = document.getElementById('feed-list');
@@ -537,6 +651,10 @@ function addEvent(e) {
 
   const el = document.createElement('div');
   el.className = 'card';
+  el.dataset.type = e.type;
+  el.dataset.name = (e.name || '').toLowerCase();
+  el.dataset.mmsi = e.mmsi;
+  if (!cardMatches(el)) el.classList.add('hidden');
   el.innerHTML =
     '<div class="r1">'
     + '<span class="etype ' + e.type + '">' + icon + ' ' + e.type.replace(/_/g,' ') + '</span>'
@@ -560,7 +678,10 @@ function addEvent(e) {
   });
 
   feedList.insertBefore(el, feedList.firstChild);
-  while (feedList.children.length > 100) feedList.removeChild(feedList.lastChild);
+  while (feedList.children.length > 101) feedList.removeChild(feedList.lastChild); // +1 for #no-results
+  // Update "no results" visibility
+  const visible = feedList.querySelectorAll('.card:not(.hidden)').length;
+  noResults.style.display = (visible === 0) ? 'block' : 'none';
 }
 
 const dot   = document.getElementById('live-dot');

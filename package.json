@@ -5,7 +5,9 @@
   "scripts": {
     "build": "pnpm -r build",
     "test": "pnpm -r test",
-    "test:core": "pnpm --filter @maritime/core test",
+    "test:core":     "pnpm --filter @maritime/core test",
+    "test:api":      "pnpm --filter @maritime/api test",
+    "test:ingestor": "pnpm --filter @maritime/ingestor test",
     "demo": "tsx scripts/demo.ts",
     "seed-db": "tsx scripts/seed-db.ts",
     "create-key": "tsx scripts/create-key.ts",
