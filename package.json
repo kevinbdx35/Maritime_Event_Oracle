@@ -14,7 +14,12 @@
     "deploy-anchor": "tsx scripts/deploy-anchor.ts",
     "db:up": "podman compose up -d",
     "db:down": "podman compose down",
-    "db:migrate": "pnpm --filter @maritime/ingestor migrate"
+    "db:migrate": "pnpm --filter @maritime/ingestor migrate",
+    "start": "pm2 start pm2.config.cjs",
+    "stop": "pm2 stop meo-api meo-ingestor meo-anchor-worker",
+    "restart": "pm2 restart meo-api meo-ingestor meo-anchor-worker",
+    "logs": "pm2 logs",
+    "status": "pm2 status"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
