@@ -9,9 +9,15 @@ import { point } from '@turf/helpers'
 import type { Feature, FeatureCollection, Polygon } from 'geojson'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const zones = JSON.parse(
-  readFileSync(join(__dirname, './rotterdam.geojson'), 'utf8'),
-) as FeatureCollection
+
+function mergeGeoJSON(...files: string[]): FeatureCollection {
+  const features = files.flatMap(f =>
+    (JSON.parse(readFileSync(join(__dirname, f), 'utf8')) as FeatureCollection).features
+  )
+  return { type: 'FeatureCollection', features }
+}
+
+const zones = mergeGeoJSON('./rotterdam.geojson', './ports-fr.geojson')
 
 type ZoneType = 'port' | 'anchorage'
 

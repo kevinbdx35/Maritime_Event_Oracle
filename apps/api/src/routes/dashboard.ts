@@ -8,6 +8,9 @@ const __dir = dirname(fileURLToPath(import.meta.url))
 const geoJson = JSON.parse(
   readFileSync(join(__dir, '../../../../packages/core/src/geo/rotterdam.geojson'), 'utf8'),
 )
+const geoJsonFr = JSON.parse(
+  readFileSync(join(__dir, '../../../../packages/core/src/geo/ports-fr.geojson'), 'utf8'),
+)
 
 interface EventRow {
   id: string
@@ -54,6 +57,7 @@ export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
   })
 
   app.get('/api/geo/rotterdam', async () => geoJson)
+  app.get('/api/geo/ports-fr', async () => geoJsonFr)
 
   // Vessel detail — used by the dashboard panel (public route)
   app.get<{ Params: { mmsi: string } }>('/api/vessels/:mmsi', async (req, reply) => {
@@ -530,12 +534,28 @@ L.control.attribution({ prefix: '© OpenStreetMap · CartoDB' }).addTo(map);
 // Close panel when clicking the map (not a marker)
 map.on('click', closePanel);
 
+function portPopup(f) {
+  const locode = f.properties.locode || f.properties.id || '';
+  const zone   = f.properties.zone === 'anchorage' ? 'Anchorage' : 'Port';
+  return '<b>' + f.properties.name + '</b>'
+    + (locode ? '<br><span style="color:#8b949e;font-size:11px">' + locode + ' · ' + zone + '</span>' : '');
+}
+
 fetch('/api/geo/rotterdam').then(r => r.json()).then(geo => {
   L.geoJSON(geo, {
-    style: f => f.properties.id === 'NLRTM'
+    style: f => f.properties.zone === 'port'
       ? { color:'#00d4aa', fillColor:'#00d4aa', fillOpacity:.07, weight:1.5 }
       : { color:'#4dabf7', fillColor:'#4dabf7', fillOpacity:.10, weight:1 },
-    onEachFeature: (f, l) => l.bindPopup('<b>' + f.properties.name + '</b><br><span style="color:#8b949e">' + f.properties.id + '</span>'),
+    onEachFeature: (f, l) => l.bindPopup(portPopup(f)),
+  }).addTo(map);
+});
+
+fetch('/api/geo/ports-fr').then(r => r.json()).then(geo => {
+  L.geoJSON(geo, {
+    style: f => f.properties.zone === 'port'
+      ? { color:'#4dabf7', fillColor:'#4dabf7', fillOpacity:.06, weight:1.5, dashArray:'4 3' }
+      : { color:'#e3b341', fillColor:'#e3b341', fillOpacity:.08, weight:1, dashArray:'4 3' },
+    onEachFeature: (f, l) => l.bindPopup(portPopup(f)),
   }).addTo(map);
 });
 

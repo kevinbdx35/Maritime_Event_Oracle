@@ -3,7 +3,7 @@ import { createHash } from 'crypto'
 import { query } from './db.js'
 
 // Routes accessible without an API key
-const PUBLIC_PATHS = new Set(['/', '/stream/events', '/api/live', '/api/geo/rotterdam', '/health', '/verify'])
+const PUBLIC_PATHS = new Set(['/', '/stream/events', '/api/live', '/api/geo/rotterdam', '/api/geo/ports-fr', '/health', '/verify'])
 // Prefix-matched public routes (vessel detail panel uses these from the browser)
 const PUBLIC_PREFIXES = ['/api/vessels/']
 
