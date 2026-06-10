@@ -4,6 +4,8 @@ import { query } from './db.js'
 
 // Routes accessible without an API key
 const PUBLIC_PATHS = new Set(['/', '/stream/events', '/api/live', '/api/geo/rotterdam'])
+// Prefix-matched public routes (vessel detail panel uses these from the browser)
+const PUBLIC_PREFIXES = ['/api/vessels/']
 
 // In-memory sliding window: keyId → { windowStart, count }
 const rateLimitWindows = new Map<string, { windowStart: number; count: number }>()
@@ -35,7 +37,7 @@ function checkRateLimit(keyId: string, limitPerMin: number): boolean {
 
 export async function authHook(req: FastifyRequest, reply: FastifyReply): Promise<void> {
   const path = req.url.split('?')[0]!
-  if (PUBLIC_PATHS.has(path)) return
+  if (PUBLIC_PATHS.has(path) || PUBLIC_PREFIXES.some(p => path.startsWith(p))) return
 
   const raw = req.headers['x-api-key']
   if (!raw || typeof raw !== 'string') {
