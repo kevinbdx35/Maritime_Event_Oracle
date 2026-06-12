@@ -6,6 +6,8 @@ A business API that **certifies maritime events** — port arrivals, departures,
 
 **Target clients:** sanctions compliance (banks, P&I clubs), parametric insurance, trade finance, decarbonisation verifiers (Katalist / Book & Claim).
 
+![Live dashboard — Rotterdam zone with vessel detail panel and real-time event feed](docs/assets/dashboard.png)
+
 ---
 
 ## What It Does
