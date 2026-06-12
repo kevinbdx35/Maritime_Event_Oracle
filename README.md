@@ -1,6 +1,6 @@
 # Maritime Event Oracle
 
-[![CI](https://github.com/kevinbdx35/Maritime_Event_Oracle-/actions/workflows/ci.yml/badge.svg)](https://github.com/kevinbdx35/Maritime_Event_Oracle-/actions/workflows/ci.yml)
+[![CI](https://github.com/kevinbdx35/Maritime_Event_Oracle/actions/workflows/ci.yml/badge.svg)](https://github.com/kevinbdx35/Maritime_Event_Oracle/actions/workflows/ci.yml)
 
 **Version 0.2.0** — multi-source consensus, multi-port coverage (Rotterdam · France · Gulf of Finland)
 
