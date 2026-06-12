@@ -143,6 +143,8 @@
   .etype.PORT_DEPARTURE  { color:var(--orange); }
   .etype.ANCHORAGE_START,.etype.ANCHORAGE_END { color:var(--blue);   }
   .etype.AIS_GAP         { color:var(--red);    }
+  .etype.STS_TRANSFER    { color:#e64980;       }
+  .etype.AIS_ANOMALY     { color:#ffd43b;       }
   .badge { font-size:10px; padding:2px 6px; border-radius:10px; background:var(--bg); border:1px solid var(--border); }
   .badge.hi { border-color:var(--teal);   color:var(--teal);   }
   .badge.md { border-color:var(--yellow); color:var(--yellow); }
@@ -329,6 +331,8 @@
         <span class="pill" data-type="PORT_DEPARTURE">↑ Departure</span>
         <span class="pill" data-type="ANCHORAGE">⚓ Anchorage</span>
         <span class="pill" data-type="AIS_GAP">⚠ Gap</span>
+        <span class="pill" data-type="STS_TRANSFER">⇄ STS</span>
+        <span class="pill" data-type="AIS_ANOMALY">✸ Anomaly</span>
       </div>
     </div>
     <div id="feed-list">
@@ -350,8 +354,8 @@
 </div>
 
 <script>
-const ICONS  = { PORT_ARRIVAL:'↓', PORT_DEPARTURE:'↑', ANCHORAGE_START:'⚓', ANCHORAGE_END:'⚓', AIS_GAP:'⚠' };
-const ETYPE_COLOR = { PORT_ARRIVAL:'#00d4aa', PORT_DEPARTURE:'#ff8c00', ANCHORAGE_START:'#4dabf7', ANCHORAGE_END:'#4dabf7', AIS_GAP:'#ff4444' };
+const ICONS  = { PORT_ARRIVAL:'↓', PORT_DEPARTURE:'↑', ANCHORAGE_START:'⚓', ANCHORAGE_END:'⚓', AIS_GAP:'⚠', STS_TRANSFER:'⇄', AIS_ANOMALY:'✸' };
+const ETYPE_COLOR = { PORT_ARRIVAL:'#00d4aa', PORT_DEPARTURE:'#ff8c00', ANCHORAGE_START:'#4dabf7', ANCHORAGE_END:'#4dabf7', AIS_GAP:'#ff4444', STS_TRANSFER:'#e64980', AIS_ANOMALY:'#ffd43b' };
 
 // AIS ship type → human label
 function shipTypeLabel(t) {

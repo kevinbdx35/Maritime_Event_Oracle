@@ -11,6 +11,7 @@
     "demo": "tsx scripts/demo.ts",
     "seed-db": "tsx scripts/seed-db.ts",
     "create-key": "tsx scripts/create-key.ts",
+    "backtest": "tsx --env-file=.env scripts/backtest.ts",
     "deploy-anchor": "tsx scripts/deploy-anchor.ts",
     "demo-oracle": "tsx --env-file=.env scripts/demo-oracle.ts",
     "db:up": "podman compose up -d",

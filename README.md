@@ -16,7 +16,7 @@ A business API that **certifies maritime events** — port arrivals, departures,
 
 1. **Ingests** real-time AIS data from multiple sources via a plug-and-play connector registry (AISStream.io WebSocket, AISHub HTTP polling, Digitraffic Marine open data).
 2. **Corroborates** every vessel across sources — a consensus gate requires ≥ 2 independent sources within a 5-minute window before events are generated (60 s single-source fallback).
-3. **Detects** port calls via a per-vessel finite state machine with hysteresis filtering.
+3. **Detects** port calls via a per-vessel finite state machine with hysteresis filtering — plus ship-to-ship transfer rendezvous (`STS_TRANSFER`) and AIS spoofing signatures (`AIS_ANOMALY`: impossible jumps, source divergence).
 4. **Scores** each event with a 5-component explainable confidence score.
 5. **Signs** every event with an Ed25519 key — unforgeable without the private key.
 6. **Anchors** hourly batches on-chain via a Merkle root — immutable once confirmed.

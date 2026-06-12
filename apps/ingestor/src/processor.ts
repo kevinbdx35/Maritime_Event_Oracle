@@ -2,6 +2,8 @@ import {
   AISMessageSchema,
   VesselStateMachine,
   GapDetector,
+  StsDetector,
+  AnomalyDetector,
   computeConfidence,
   signEvent,
   isInArea,
@@ -49,6 +51,9 @@ const gapDetector = new GapDetector(async (gap) => {
   console.log(`[gap] AIS_GAP emitted for ${gap.mmsi}`)
 })
 
+const stsDetector     = new StsDetector()
+const anomalyDetector = new AnomalyDetector()
+
 export async function initProcessor(): Promise<void> {
   const states = await loadVesselStates()
   for (const [mmsi, { state, trackingSinceMinutes }] of states) {
@@ -92,6 +97,62 @@ export async function processMessage(msg: AISMessage): Promise<void> {
     gapDetector.touch(mmsi, time, msg.lat, msg.lon)
   } else {
     gapDetector.untrack(mmsi)
+  }
+
+  // STS + spoofing detectors (independent of the FSM)
+  const corroboration = corroborationTracker.getActiveSources(mmsi)
+
+  for (const sts of stsDetector.update(pos)) {
+    const evtInput: EventBuildInput = {
+      mmsi, type: 'STS_TRANSFER', timestamp: sts.detectedAt,
+      positions: [pos], corroborationSources: corroboration,
+      sts: {
+        partner_mmsi: sts.partnerMmsi,
+        started_at: sts.startedAt.toISOString(),
+        duration_minutes: sts.durationMinutes,
+        distance_m: sts.distanceM,
+        in_anchorage: sts.inAnchorage,
+        partner_position: { lat: sts.partnerPosition.lat, lon: sts.partnerPosition.lon, time: sts.partnerPosition.time.toISOString() },
+      },
+    }
+    if (msg.imo  !== undefined) evtInput.imo  = msg.imo
+    if (msg.name !== undefined) evtInput.name = msg.name
+    evtInput.confidence = computeConfidence({
+      windowPositions: [pos], trackingAgeMinutes: sts.durationMinutes,
+      source: msg.source, corroborationSources: corroboration,
+    }).weighted_score
+    const evt = buildEvent(evtInput)
+    await insertEvent(evt)
+    eventBus.emit('event', evt)
+    console.log(`[sts] STS_TRANSFER ${mmsi} ↔ ${sts.partnerMmsi} (${sts.durationMinutes} min, ${sts.distanceM} m)`)
+  }
+
+  const anomaly = anomalyDetector.update(pos)
+  if (anomaly) {
+    const evtInput: EventBuildInput = {
+      mmsi, type: 'AIS_ANOMALY', timestamp: anomaly.detectedAt,
+      positions: [pos], corroborationSources: corroboration,
+      anomaly: {
+        kind: anomaly.kind,
+        distance_m: anomaly.distanceM,
+        interval_seconds: anomaly.intervalSeconds,
+        ...(anomaly.impliedSpeedKnots !== undefined ? { implied_speed_knots: anomaly.impliedSpeedKnots } : {}),
+        ...(anomaly.kind === 'source_divergence' ? { conflicting_sources: anomaly.sources } : {}),
+        from: { lat: anomaly.from.lat, lon: anomaly.from.lon, time: anomaly.from.time.toISOString(), source: anomaly.from.source },
+        to:   { lat: anomaly.to.lat,   lon: anomaly.to.lon,   time: anomaly.to.time.toISOString(),   source: anomaly.to.source },
+      },
+    }
+    if (msg.imo  !== undefined) evtInput.imo  = msg.imo
+    if (msg.name !== undefined) evtInput.name = msg.name
+    const ageMin = (time.getTime() - (trackingSince.get(mmsi)?.getTime() ?? time.getTime())) / 60_000
+    evtInput.confidence = computeConfidence({
+      windowPositions: [pos], trackingAgeMinutes: ageMin,
+      source: msg.source, corroborationSources: corroboration,
+    }).weighted_score
+    const evt = buildEvent(evtInput)
+    await insertEvent(evt)
+    eventBus.emit('event', evt)
+    console.log(`[anomaly] AIS_ANOMALY ${anomaly.kind} for ${mmsi} (${anomaly.distanceM} m in ${anomaly.intervalSeconds}s)`)
   }
 
   // FSM update
@@ -163,6 +224,8 @@ interface EventBuildInput {
   confidence?: number
   breakdown?: MaritimeEvent['confidence_breakdown']
   gap?: MaritimeEvent['gap']
+  sts?: MaritimeEvent['evidence']['sts']
+  anomaly?: MaritimeEvent['evidence']['anomaly']
   corroborationSources?: string[]
 }
 
@@ -213,6 +276,8 @@ function buildEvent(input: EventBuildInput): MaritimeEvent {
     anchor: null,
   }
   if (input.gap !== undefined) evt.gap = input.gap
+  if (input.sts !== undefined) evt.evidence.sts = input.sts
+  if (input.anomaly !== undefined) evt.evidence.anomaly = input.anomaly
 
   // Sign over the event without the signature field itself
   const { signature: _, ...toSign } = evt

@@ -62,6 +62,19 @@ export function isInArea(lat: number, lon: number): boolean {
   return isInPort(lat, lon) || isInAnchorage(lat, lon).inside
 }
 
+const EARTH_RADIUS_M = 6_371_000
+
+// Great-circle distance in metres (haversine — sub-metre accurate at these scales).
+export function distanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const toRad = (d: number) => (d * Math.PI) / 180
+  const dLat = toRad(lat2 - lat1)
+  const dLon = toRad(lon2 - lon1)
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2
+  return 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(a))
+}
+
 // UN/LOCODE of the port zone containing this position, or null if outside all zones.
 export function portFor(lat: number, lon: number): string | null {
   const pt = point([lon, lat])

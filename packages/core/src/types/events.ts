@@ -6,6 +6,8 @@ export type EventType =
   | 'ANCHORAGE_START'
   | 'ANCHORAGE_END'
   | 'AIS_GAP'
+  | 'STS_TRANSFER'
+  | 'AIS_ANOMALY'
   | 'CORRECTION'
 
 export interface ConfidenceBreakdown {
@@ -30,6 +32,25 @@ export interface EvidenceWindow {
   window_start: string
   window_end: string
   message_count: number
+  // STS_TRANSFER specific
+  sts?: {
+    partner_mmsi: string
+    started_at: string
+    duration_minutes: number
+    distance_m: number
+    in_anchorage: boolean
+    partner_position: { lat: number; lon: number; time: string }
+  }
+  // AIS_ANOMALY specific
+  anomaly?: {
+    kind: 'impossible_jump' | 'source_divergence'
+    distance_m: number
+    interval_seconds: number
+    implied_speed_knots?: number
+    conflicting_sources?: string[]
+    from: { lat: number; lon: number; time: string; source: string }
+    to:   { lat: number; lon: number; time: string; source: string }
+  }
 }
 
 export interface AnchorInfo {
