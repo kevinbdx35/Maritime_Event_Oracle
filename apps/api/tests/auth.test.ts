@@ -81,4 +81,51 @@ describe('Auth middleware', () => {
     expect(r3.statusCode).toBe(429)
     expect(r3.json().error).toMatch(/Rate limit/i)
   })
+
+  it('rejects a key whose scopes do not cover the resource', async () => {
+    mockQuery.mockResolvedValue({ rows: [{ id: 'key_scoped', rate_limit: 100, scopes: ['vessels:read'] }] })
+    const app = await buildApp()
+    const res = await app.inject({ method: 'GET', url: '/events', headers: { 'x-api-key': 'meo_scopedkey' } })
+    expect(res.statusCode).toBe(403)
+    expect(res.json().error).toMatch(/scope/i)
+  })
+
+  it('accepts a key with the resource-specific scope', async () => {
+    mockQuery.mockResolvedValue({ rows: [{ id: 'key_evscope', rate_limit: 100, scopes: ['events:read'] }] })
+    const app = await buildApp()
+    const res = await app.inject({ method: 'GET', url: '/events', headers: { 'x-api-key': 'meo_evscopekey' } })
+    expect(res.statusCode).toBe(200)
+  })
+
+  it('does not require an API key on /admin routes (guarded by X-Admin-Secret)', async () => {
+    const app = await buildApp()
+    // No /admin route registered here: 404 proves the hook let it through (not 401)
+    const res = await app.inject({ method: 'GET', url: '/admin/keys' })
+    expect(res.statusCode).toBe(404)
+    expect(mockQuery).not.toHaveBeenCalled()
+  })
+
+  it('does not treat unknown /api/vessels subroutes as public', async () => {
+    const app = await buildApp()
+    const res = await app.inject({ method: 'GET', url: '/api/vessels/123456789/positions/raw' })
+    expect(res.statusCode).toBe(401)
+  })
+
+  // Keep last: resetModules gives auth.ts a fresh module state, which detaches
+  // the mockQuery reference used by the earlier tests
+  it('rate-limits public routes per IP', async () => {
+    vi.resetModules()
+    process.env['PUBLIC_RATE_LIMIT'] = '3'
+    try {
+      const app = await buildApp()
+      const codes: number[] = []
+      for (let i = 0; i < 4; i++) {
+        const res = await app.inject({ method: 'GET', url: '/api/live' })
+        codes.push(res.statusCode)
+      }
+      expect(codes).toEqual([200, 200, 200, 429])
+    } finally {
+      delete process.env['PUBLIC_RATE_LIMIT']
+    }
+  })
 })

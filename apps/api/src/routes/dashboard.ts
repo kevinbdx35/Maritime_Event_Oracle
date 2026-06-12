@@ -53,6 +53,10 @@ const EVENT_QUERY = `
   LEFT JOIN anchor_batches ab ON ab.id = e.anchor_batch_id
 `
 
+// Each SSE connection costs one DB query every 3 s — cap per client
+const SSE_MAX_PER_IP = parseInt(process.env['SSE_MAX_PER_IP'] ?? '4')
+const sseConnections = new Map<string, number>()
+
 export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
   app.get('/', async (_req, reply) => {
     reply.type('text/html')
@@ -181,6 +185,13 @@ export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
   })
 
   app.get('/stream/events', async (req, reply) => {
+    const ip = req.ip
+    const active = sseConnections.get(ip) ?? 0
+    if (active >= SSE_MAX_PER_IP) {
+      return reply.code(429).send({ error: 'Too many concurrent event streams', maxPerIp: SSE_MAX_PER_IP })
+    }
+    sseConnections.set(ip, active + 1)
+
     reply.hijack()
     reply.raw.writeHead(200, {
       'Content-Type':  'text/event-stream',
@@ -213,6 +224,9 @@ export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
 
     await new Promise<void>(resolve => req.raw.on('close', resolve))
     clearInterval(timer)
+    const remaining = (sseConnections.get(ip) ?? 1) - 1
+    if (remaining <= 0) sseConnections.delete(ip)
+    else sseConnections.set(ip, remaining)
     reply.raw.end()
   })
 }
