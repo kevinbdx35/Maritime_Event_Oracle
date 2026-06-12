@@ -1,5 +1,7 @@
 # Maritime Event Oracle
 
+[![CI](https://github.com/kevinbdx35/Maritime_Event_Oracle-/actions/workflows/ci.yml/badge.svg)](https://github.com/kevinbdx35/Maritime_Event_Oracle-/actions/workflows/ci.yml)
+
 **Version 0.2.0** — multi-source consensus, multi-port coverage (Rotterdam · France · Gulf of Finland)
 
 A business API that **certifies maritime events** — port arrivals, departures, anchorages, and AIS gaps — with explainable confidence scores and hourly Merkle anchoring on Base Sepolia testnet.
